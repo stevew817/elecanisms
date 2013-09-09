@@ -19,8 +19,6 @@ env.Append(BUILDERS = {'List' : list})
 
 env.Program('blink', ['blink.c',
                       '../lib/timer.c',
-                      '../lib/ui.c',
-					  '../lib/pin.c',
-					  '../lib/oc.c'])
+                      '../lib/ui.c'])
 env.Hex('blink')
 env.List('blink')
