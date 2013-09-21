@@ -81,12 +81,12 @@ int16_t main(void) {
 	init_oc();
 	
 	//Servo control on D12 & D13
-	pin_digitalOut(&D[12]);
-	pin_digitalOut(&D[13]);
+	pin_digitalOut(&D[2]);
+	pin_digitalOut(&D[3]);
 	
 	//According to HobbyKing documentation: range .8 through 2.2 msec
-	oc_servo(&oc1, &D[12], &timer1, 0.02f, 0.0008f, 0.0022f, 0x8000);
-	oc_servo(&oc2, &D[13], &timer2, 0.02f, 0.0008f, 0.0022f, 0x8000);
+	oc_servo(&oc1, &D[2], &timer1, 0.02f, 0.0008f, 0.0022f, 0x8000);
+	oc_servo(&oc2, &D[3], &timer2, 0.02f, 0.0008f, 0.0022f, 0x8000);
 
     val1 = 0;
     val2 = 0;
@@ -98,8 +98,8 @@ int16_t main(void) {
     while (1) {
         ServiceUSB();                       // service any pending USB requests
 		
-		pin_write(&D[12], val1);
-		pin_write(&D[13], val2);
+		pin_write(&D[2], val1);
+		pin_write(&D[3], val2);
     }
 }
 
