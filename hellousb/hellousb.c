@@ -1,3 +1,9 @@
+/***************************************************************************
+*	Elecanisms 2013 Miniproject 2:
+*	Servo control using USB and a Python GUI
+*	Geeta, Sarah and Steven
+***************************************************************************/
+
 #include <p24FJ128GB206.h>
 #include "config.h"
 #include "common.h"
