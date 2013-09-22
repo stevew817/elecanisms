@@ -14,7 +14,23 @@
 #define GET_VALS    2   // Vendor request that returns 2 unsigned integer values
 #define PRINT_VALS  3   // Vendor request that prints 2 unsigned integer values 
 
-uint16_t val1, val2;
+#define PAN_PIN		&D[2]
+#define TILT_PIN	&D[3]
+
+#define SERVO_PERIOD	0.02f
+#define SERVO_MIN		0.0008f
+#define SERVO_MAX		0.0022f
+
+#define SERVO1_OC	&oc1
+#define SERVO2_OC	&oc2
+
+#define SERVO1_TIM	&timer1
+#define SERVO2_TIM	&timer2
+#define LED_TIM		&timer3
+
+#define LED 		&led1
+
+uint16_t pan_set_val = 0, tilt_set_val = 0;
 
 //void ClassRequests(void) {
 //    switch (USB_setup.bRequest) {
@@ -33,23 +49,23 @@ void VendorRequests(void) {
             BD[EP0IN].status = 0xC8;    // send packet as DATA1, set UOWN bit
             break;
         case SET_VALS:
-            val1 = USB_setup.wValue.w;
-            val2 = USB_setup.wIndex.w;
+            pan_set_val = USB_setup.wValue.w;
+            tilt_set_val = USB_setup.wIndex.w;
             BD[EP0IN].bytecount = 0;    // set EP0 IN byte count to 0 
             BD[EP0IN].status = 0xC8;    // send packet as DATA1, set UOWN bit
             break;
         case GET_VALS:
-            temp.w = val1;
+            temp.w = pan_set_val;
             BD[EP0IN].address[0] = temp.b[0];
             BD[EP0IN].address[1] = temp.b[1];
-            temp.w = val2;
+            temp.w = tilt_set_val;
             BD[EP0IN].address[2] = temp.b[0];
             BD[EP0IN].address[3] = temp.b[1];
             BD[EP0IN].bytecount = 4;    // set EP0 IN byte count to 4
             BD[EP0IN].status = 0xC8;    // send packet as DATA1, set UOWN bit
             break;            
         case PRINT_VALS:
-            printf("val1 = %u, val2 = %u\n", val1, val2);
+            printf("pan_set_val = %u, tilt_set_val = %u\n", pan_set_val, tilt_set_val);
             BD[EP0IN].bytecount = 0;    // set EP0 IN byte count to 0
             BD[EP0IN].status = 0xC8;    // send packet as DATA1, set UOWN bit
             break;
@@ -73,33 +89,53 @@ void VendorRequestsOut(void) {
 }
 
 int16_t main(void) {
+	//initialize all system clocks
     init_clock();
+	//initialize serial communications
     init_uart();
+	//initialize pin driving library (to be able to use the &D[x] defs)
 	init_pin();
+	//initialize the UI library
     init_ui();
+	//initialize the timer module
     init_timer();
+	//initialize the OC module (used by the servo driving code)
 	init_oc();
 	
-	//Servo control on D12 & D13
-	pin_digitalOut(&D[2]);
-	pin_digitalOut(&D[3]);
+	//Set servo control pins as output
+	pin_digitalOut(PAN_PIN);
+	pin_digitalOut(TILT_PIN);
+	
+	//Set LED off
+	led_off(LED);
+	//Configure blinking rate for LED when connected
+    timer_setPeriod(LED_TIM, 0.2);
+    timer_start(LED_TIM);
 	
 	//According to HobbyKing documentation: range .8 through 2.2 msec
-	oc_servo(&oc1, &D[2], &timer1, 0.02f, 0.0008f, 0.0022f, 0x8000);
-	oc_servo(&oc2, &D[3], &timer2, 0.02f, 0.0008f, 0.0022f, 0x8000);
-
-    val1 = 0;
-    val2 = 0;
+	//Set servo control pins as OC outputs on their respective timers
+	oc_servo(SERVO1_OC, PAN_PIN, 	SERVO1_TIM, SERVO_PERIOD, SERVO_MIN, SERVO_MAX, pan_set_val);
+	oc_servo(SERVO2_OC, TILT_PIN, 	SERVO2_TIM, SERVO_PERIOD, SERVO_MIN, SERVO_MAX, tilt_set_val);
 
     InitUSB();                              // initialize the USB registers and serial interface engine
     while (USB_USWSTAT!=CONFIG_STATE) {     // while the peripheral is not configured...
         ServiceUSB();                       // ...service USB requests
+		led_on(LED);
+		//There's no point in driving the servos when there's no one connected yet.
     }
+	
     while (1) {
         ServiceUSB();                       // service any pending USB requests
 		
-		pin_write(&D[2], val1);
-		pin_write(&D[3], val2);
+		//blink the LED
+		if (timer_flag(LED_TIM)) {
+            timer_lower(LED_TIM);
+            led_toggle(LED);
+        }
+		
+		//Update the servo control values.
+		pin_write(PAN_PIN, pan_set_val);
+		pin_write(TILT_PIN, tilt_set_val);
     }
 }
 
